@@ -87,3 +87,27 @@ def property_environment(property_id:int):
     return {"property_id":property_id,"source":result["source"],"external_id":result["external_id"],
        "embargo_intersections_in_loaded_dataset":result["matches"],"legal_status":"NOT_VERIFIED",
        "warning":"Missing matches do not demonstrate that the property has no embargo. Check official current records."}
+
+
+@lru_cache(maxsize=512)
+def geocode_lookup(query: str):
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
+    url = "https://nominatim.openstreetmap.org/search?" + urlencode({
+      "q": query + ", Brasil", "format": "jsonv2", "limit": 5, "countrycodes": "br"
+    })
+    req = Request(url, headers={"User-Agent": "LiberatoFazendas/0.1 (contact: liberatogrupo on GitHub)"})
+    with urlopen(req, timeout=15) as response:
+        return json.load(response)
+
+
+@router.get("/geocode")
+def geocode(q: str = Query(min_length=3, max_length=120)):
+    try:
+        data = geocode_lookup(q)
+        return {"provider": "OpenStreetMap Nominatim", "results": [
+            {"name": r["display_name"], "latitude": float(r["lat"]),
+             "longitude": float(r["lon"]), "type": r.get("type")}
+            for r in data]}
+    except Exception:
+        raise HTTPException(503, "Geocoding service temporarily unavailable")
