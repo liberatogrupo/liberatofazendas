@@ -85,3 +85,6 @@ app.include_router(operational_router)
 
 from .sicar import router as sicar_router
 app.include_router(sicar_router)
+
+from .sicar_live import router as sicar_live_router
+app.include_router(sicar_live_router)
