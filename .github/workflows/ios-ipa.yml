@@ -1,0 +1,45 @@
+name: Build unsigned iOS IPA
+on:
+  push:
+    branches:
+      - develop/liberato-fazendas-foundation
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/ios-ipa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install packages
+        run: npm install --no-audit --no-fund
+      - name: Compile static Next.js app
+        run: npm run build
+      - name: Generate native iOS project
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compile unsigned simulator-independent iOS app
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath ios-build CODE_SIGNING_ALLOWED=NO build
+      - name: Package unsigned IPA (requires valid signing to install)
+        run: |
+          mkdir -p ipa/Payload
+          cp -R ios-build/Build/Products/Release-iphoneos/App.app ipa/Payload/
+          cd ipa
+          zip -qr LIBERATO-FAZENDAS-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LIBERATO-FAZENDAS-unsigned-IPA
+          path: apps/web/ipa/LIBERATO-FAZENDAS-unsigned.ipa
+          retention-days: 7
