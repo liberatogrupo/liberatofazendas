@@ -1,0 +1,25 @@
+name: Download official IBGE boundaries
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download and verify official IBGE 2025 archives
+        run: |
+          set -euo pipefail
+          mkdir -p official-data
+          BASE="https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2025/Brasil"
+          for FILE in BR_Pais_2025.zip BR_UF_2025.zip BR_Municipios_2025.zip; do
+            curl --fail --location --retry 3 --connect-timeout 20 --max-time 800 "$BASE/$FILE" -o "official-data/$FILE"
+            unzip -t "official-data/$FILE" | tail -1
+            sha256sum "official-data/$FILE" >> official-data/SHA256SUMS.txt
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ibge-2025-official-boundaries
+          path: official-data/
+          retention-days: 7
