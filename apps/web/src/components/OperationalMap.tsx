@@ -14,6 +14,7 @@ function areaHa(points:Coord[]):number{
  }
  return Math.abs(s*earth*earth/2)/10000;
 }
+const API=process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const empty:GeoJSON.FeatureCollection={type:"FeatureCollection",features:[]};
 export default function OperationalMap(){
  const node=useRef<HTMLDivElement>(null),map=useRef<maplibregl.Map|null>(null);
@@ -36,6 +37,11 @@ export default function OperationalMap(){
    m.addLayer({id:"registered-fill",type:"fill",source:"registered",paint:{"fill-color":"#60b580","fill-opacity":.32}});
    m.addLayer({id:"registered-line",type:"line",source:"registered",paint:{"line-color":"#216e4d","line-width":2}});
    m.on("click","registered-fill",e=>setSelected(e.features?.[0]?.properties??null));
+   m.addSource("embargoes",{type:"geojson",data:empty});
+   m.addLayer({id:"embargo-fill",type:"fill",source:"embargoes",paint:{"fill-color":"#c43c33","fill-opacity":.55}});
+   m.addLayer({id:"embargo-outline",type:"line",source:"embargoes",paint:{"line-color":"#a82320","line-width":2}});
+   void loadTerritory(m);
+   m.on("moveend",()=>void loadTerritory(m));
   });
   m.on("click",e=>{
    if(!drawingRef.current)return;
@@ -49,6 +55,21 @@ export default function OperationalMap(){
  function renderPolygon(m:maplibregl.Map,coords:Coord[]){
   const polygon:GeoJSON.FeatureCollection=coords.length>=3?{type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[...coords,coords[0]]]}}]}:empty;
   (m.getSource("measured") as maplibregl.GeoJSONSource|undefined)?.setData(polygon);
+ }
+ async function loadTerritory(m:maplibregl.Map){
+  const b=m.getBounds();
+  const bbox=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(",");
+  try{
+   const [props,emb]=await Promise.all([
+    fetch(`${API}/v1/territory/properties?bbox=${encodeURIComponent(bbox)}&limit=300`),
+    fetch(`${API}/v1/territory/embargoes?bbox=${encodeURIComponent(bbox)}&limit=300`)
+   ]);
+   if(!props.ok||!emb.ok)throw new Error("Data API failed");
+   const [p,e]=await Promise.all([props.json(),emb.json()]);
+   (m.getSource("registered") as maplibregl.GeoJSONSource|undefined)?.setData(p);
+   (m.getSource("embargoes") as maplibregl.GeoJSONSource|undefined)?.setData(e);
+   setLayerState(`${p.features.length} imóveis e ${e.features.length} embargos na área visível (base carregada; não é certidão)`);
+  }catch{setLayerState("API territorial não disponível ou banco sem migração; situação não verificada");}
  }
  function toggleMeasure(){drawingRef.current=!drawingRef.current;setDrawing(drawingRef.current);setMessage(drawingRef.current?"Clique nos vértices do terreno. Clique novamente em Medir para terminar.":"Medição finalizada. Resultado estimado a partir dos vértices selecionados.");}
  function clearMeasure(){pointsRef.current=[];setPoints([]);if(map.current)renderPolygon(map.current,[]);setMessage("Medição apagada.");}
