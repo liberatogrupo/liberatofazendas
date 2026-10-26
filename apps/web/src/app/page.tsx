@@ -15,9 +15,9 @@ export default function Home() {
       <div className="sidebar-heading">ESPAÇO DE TRABALHO</div>
       <nav className="nav">
         <a href="#visao-geral" className="nav-item active"><Compass size={19}/> Visão geral</a>
-        <a href="#territorio" className="nav-item"><MapPinned size={19}/> Mapa territorial</a>
-        <a href="#fontes" className="nav-item"><Database size={19}/> Bases de dados</a>
-        <a href="#indicadores" className="nav-item"><BarChart3 size={19}/> Indicadores</a>
+        <a href="/operacional/" className="nav-item"><MapPinned size={19}/> Mapa operacional</a>
+        <a href="/sicar/" className="nav-item"><Database size={19}/> Consultar SICAR</a>
+        <a href="/consultar/" className="nav-item"><BarChart3 size={19}/> Fichas rurais</a>
       </nav>
       <div className="sidebar-bottom"><div className="secure-icon"><ShieldCheck size={20}/></div><div><strong>Dados públicos</strong><span>Transparência e inteligência</span></div></div>
     </aside>
