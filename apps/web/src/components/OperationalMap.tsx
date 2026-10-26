@@ -73,7 +73,25 @@ export default function OperationalMap(){
  }
  function toggleMeasure(){drawingRef.current=!drawingRef.current;setDrawing(drawingRef.current);setMessage(drawingRef.current?"Clique nos vértices do terreno. Clique novamente em Medir para terminar.":"Medição finalizada. Resultado estimado a partir dos vértices selecionados.");}
  function clearMeasure(){pointsRef.current=[];setPoints([]);if(map.current)renderPolygon(map.current,[]);setMessage("Medição apagada.");}
- function locate(e:React.FormEvent){e.preventDefault();const match=query.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,;]\s*(-?\d+(?:\.\d+)?)$/);if(!match){setMessage("Pesquise por coordenadas no formato latitude, longitude. Busca por nome requer geocodificador.");return;}const lat=Number(match[1]),lon=Number(match[2]);if(lat>90||lat< -90||lon>180||lon< -180){setMessage("Coordenadas inválidas.");return;}map.current?.flyTo({center:[lon,lat],zoom:14});setMessage(`Coordenadas localizadas: ${lat}, ${lon}`);}
+ async function locate(e:React.FormEvent){e.preventDefault();
+  const value=query.trim();if(!value)return;
+  const match=value.match(/^(-?\d+(?:\.\d+)?)\s*[,;]\s*(-?\d+(?:\.\d+)?)$/);
+  if(match){
+    const lat=Number(match[1]),lon=Number(match[2]);
+    if(lat>90||lat< -90||lon>180||lon< -180){setMessage("Coordenadas inválidas.");return;}
+    map.current?.flyTo({center:[lon,lat],zoom:14});
+    setMessage(`Coordenadas localizadas: ${lat}, ${lon}`);return;
+  }
+  try{
+    const r=await fetch(`${API}/v1/geocode?q=${encodeURIComponent(value)}`);
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    const place=d.results?.[0];
+    if(!place){setMessage("Local não encontrado. Experimente município e UF.");return;}
+    map.current?.flyTo({center:[place.longitude,place.latitude],zoom:12});
+    setMessage(`Localizado: ${place.name} · OpenStreetMap`);
+  }catch{setMessage("Busca por nome indisponível. Confira conexão com a API.");}
+ }
  function switchStyle(){const m=map.current;if(!m)return;const next=!sat;setSat(next);setSelected(null);m.setStyle(next?{version:8,sources:{imagery:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,attribution:"Esri, Maxar, Earthstar Geographics, and the GIS User Community"}},layers:[{id:"imagery",type:"raster",source:"imagery"}]}:"https://tiles.openfreemap.org/styles/bright");setMessage("Mapa-base alterado. Medição visual será restaurada ao recarregar a tela.");}
  async function terrain(){const m=map.current;if(!m)return;try{if(pitch){m.setTerrain(null);m.easeTo({pitch:0});setPitch(false);}else{if(!m.getSource("elevation"))m.addSource("elevation",{type:"raster-dem",url:"https://tiles.mapterhorn.com/tilejson.json",tileSize:256});m.setTerrain({source:"elevation",exaggeration:1});m.easeTo({pitch:65,zoom:Math.max(m.getZoom(),10)});setPitch(true);}}catch{setMessage("Relevo 3D indisponível nesta conexão.");}}
  return <main className="ops"><header><div><strong>◈ LIBERATO</strong><small>FAZENDAS · INTELIGÊNCIA TERRITORIAL</small></div><span>EXPLORADOR RURAL</span></header><section className="op-map"><div ref={node} className="op-canvas"/><form onSubmit={locate} className="op-search"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Latitude, longitude (ex.: -10.5, -48.2)" aria-label="Buscar coordenadas"/><button type="submit">Localizar</button></form><div className="op-actions"><button onClick={toggleMeasure}>{drawing?"Finalizar medição":"Medir área"}</button><button onClick={clearMeasure}>Limpar</button><button onClick={switchStyle}>{sat?"Mapa":"Satélite"}</button><button onClick={terrain}>{pitch?"2D":"Relevo 3D"}</button></div><aside className="op-card"><small>ANÁLISE GEOGRÁFICA</small><strong>{points.length>=3?areaHa(points).toLocaleString("pt-BR",{maximumFractionDigits:2})+" ha":"— ha"}</strong><span>{points.length} vértices registrados</span><p>{message}</p><hr/><span>Propriedades / embargos</span><p>{layerState}. Sem consulta a órgãos públicos, a situação jurídica é <b>não determinada</b>.</p><a href="https://aie-consultapublica.ibama.gov.br/" target="_blank" rel="noreferrer">Consulta oficial IBAMA ↗</a></aside>{selected&&<aside className="op-selected"><button onClick={()=>setSelected(null)}>Fechar</button><h3>{String(selected.name??selected.external_id??"Área")}</h3><p>Registro geoespacial — não comprova titularidade.</p></aside>}</section><footer>LIBERATO FAZENDAS · Medições geodésicas estimadas, não substituem levantamentos técnicos ou certidões oficiais.</footer></main>
