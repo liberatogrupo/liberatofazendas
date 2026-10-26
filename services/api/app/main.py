@@ -82,3 +82,6 @@ def properties(
 # Operational territory endpoints
 from .operational import router as operational_router
 app.include_router(operational_router)
+
+from .sicar import router as sicar_router
+app.include_router(sicar_router)
