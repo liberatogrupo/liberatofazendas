@@ -78,3 +78,7 @@ def properties(
                         for k in ("name", "source", "external_id", "state_code", "municipality_code", "area_hectares")}}
         for r in records
     ]}
+
+# Operational territory endpoints
+from .operational import router as operational_router
+app.include_router(operational_router)
