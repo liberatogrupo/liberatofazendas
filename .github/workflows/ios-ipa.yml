@@ -23,6 +23,8 @@ jobs:
           node-version: '22'
       - name: Install packages
         run: npm install --no-audit --no-fund
+      - name: Validate TypeScript
+        run: npm run typecheck
       - name: Compile static Next.js app
         run: npm run build
       - name: Generate native iOS project
@@ -43,3 +45,4 @@ jobs:
           name: LIBERATO-FAZENDAS-unsigned-IPA
           path: apps/web/ipa/LIBERATO-FAZENDAS-unsigned.ipa
           retention-days: 7
+          if-no-files-found: error
