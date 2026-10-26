@@ -1,5 +1,5 @@
-import "./style.css";
 "use client";
+import "./style.css";
 import {useEffect,useRef,useState} from "react";
 import maplibregl from "maplibre-gl";
 type GeoFeature=GeoJSON.Feature<GeoJSON.Geometry,Record<string,unknown>>;
